@@ -247,15 +247,7 @@ public:
         for (int i = 0; i < m_size; i++) {
             if (Valid(i)) {
                 // check is head?
-                bool is_head = true;
-                for (int j = 0; j < m_size; j++) {
-                    if (m_nodes[j].next == i) {
-                        is_head = false;
-                        break;
-                    }
-                }
-
-                if (is_head) {
+                if (m_nodes[i].pre == -1) {
                     int count = 0;
                     int next = i;
                     while (next != -1) {

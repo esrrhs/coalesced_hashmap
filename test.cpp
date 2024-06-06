@@ -49,6 +49,42 @@ int test() {
     return 0;
 }
 
+int64_t random_int64() {
+    return (int64_t) rand() << 32 | rand();
+}
+
+int benchmark() {
+    srand(time(NULL));
+    CoalescedHashMap<int64_t, int64_t> map;
+    for (int i = 0; i < 1000 * 10000; i++) {
+        map.Insert(random_int64(), i);
+    }
+    std::cout << "size:" << map.Size() << std::endl;
+    std::cout << "capacity:" << map.Capacity() << std::endl;
+    std::cout << "main_position_size:" << map.MainPositionSize() << std::endl;
+    auto chain_status = map.ChainStatus();
+    for (auto &item: chain_status) {
+        std::cout << "chain length: " << item.first << " count: " << item.second << std::endl;
+    }
+    std::cout << "end" << std::endl;
+    char c;
+    std::cin >> c;
+    return 0;
+}
+
+int benchmark_unordered_map() {
+    srand(time(NULL));
+    std::unordered_map<int64_t, int64_t> map;
+    for (int i = 0; i < 1000 * 10000; i++) {
+        map.insert({random_int64(), i});
+    }
+    std::cout << "size:" << map.size() << std::endl;
+    char c;
+    std::cin >> c;
+    return 0;
+}
+
 int main() {
-    return test();
+    test();
+    return 0;
 }
