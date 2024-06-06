@@ -3,6 +3,7 @@
 #include <cstring>
 #include <stdint.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <iostream>
 #include <atomic>
 #include <vector>

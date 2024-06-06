@@ -63,12 +63,44 @@ int64_t random_int64() {
     return (int64_t) rand() << 32 | rand();
 }
 
-int benchmark() {
-    srand(time(NULL));
-    CoalescedHashMap<int64_t, int64_t> map;
+std::unordered_set<int64_t> gData;
+
+int init_test_data() {
+    gData.clear();
     for (int i = 0; i < 1000 * 10000; i++) {
-        map.Insert(random_int64(), i);
+        auto key = random_int64();
+        if (gData.find(key) != gData.end()) {
+            i--;
+            continue;
+        }
+        gData.insert(key);
     }
+    return 0;
+}
+
+int benchmark() {
+    init_test_data();
+    auto begin = std::chrono::high_resolution_clock::now();
+    CoalescedHashMap<int64_t, int64_t> map;
+    for (auto &i: gData) {
+        map.Insert(i, i);
+    }
+    std::cout << "insert time:" << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - begin).count() << std::endl;
+    begin = std::chrono::high_resolution_clock::now();
+    for (auto &i: gData) {
+        int64_t value;
+        if (!map.Find(i, value)) {
+            std::cout << "find key: " << i << " failed" << std::endl;
+            return -1;
+        }
+        if (value != i) {
+            std::cout << "find key: " << i << " value: " << value << " not equal" << std::endl;
+            return -1;
+        }
+    }
+    std::cout << "find time:" << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - begin).count() << std::endl;
     std::cout << "size:" << map.Size() << std::endl;
     std::cout << "capacity:" << map.Capacity() << std::endl;
     std::cout << "main_position_size:" << map.MainPositionSize() << std::endl;
@@ -83,11 +115,28 @@ int benchmark() {
 }
 
 int benchmark_unordered_map() {
-    srand(time(NULL));
+    init_test_data();
+    auto begin = std::chrono::high_resolution_clock::now();
     std::unordered_map<int64_t, int64_t> map;
-    for (int i = 0; i < 1000 * 10000; i++) {
-        map.insert({random_int64(), i});
+    for (auto &i: gData) {
+        map[i] = i;
     }
+    std::cout << "insert time:" << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - begin).count() << std::endl;
+    begin = std::chrono::high_resolution_clock::now();
+    for (auto &i: gData) {
+        auto it = map.find(i);
+        if (it == map.end()) {
+            std::cout << "find key: " << i << " failed" << std::endl;
+            return -1;
+        }
+        if (it->second != i) {
+            std::cout << "find key: " << i << " value: " << it->second << " not equal" << std::endl;
+            return -1;
+        }
+    }
+    std::cout << "find time:" << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - begin).count() << std::endl;
     std::cout << "size:" << map.size() << std::endl;
     char c;
     std::cin >> c;
@@ -95,6 +144,6 @@ int benchmark_unordered_map() {
 }
 
 int main() {
-    test();
+    benchmark();
     return 0;
 }
