@@ -10,6 +10,9 @@ int value = 0;
 if (map.Find("key", value)) {
     std::cout << "found" << std::endl;
 }
+for (auto it = map.Begin(); it != map.End(); ++it) {
+    std::cout << "key: " << it.GetKey() << " value: " << it.GetValue() << std::endl;
+}
 if (map.Erase("key")) {
     std::cout << "erased" << std::endl;
 }

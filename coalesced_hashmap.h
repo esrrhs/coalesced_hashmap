@@ -273,6 +273,50 @@ public:
         return ss.str();
     }
 
+    class Iterator {
+    public:
+        Iterator(CoalescedHashMap *map) : m_map(map) {
+            m_index = 0;
+            while (m_index < m_map->m_size && !m_map->Valid(m_index)) {
+                m_index++;
+            }
+        }
+
+        Iterator(CoalescedHashMap *map, int index) : m_map(map), m_index(index) {}
+
+        const Key &GetKey() const {
+            return m_map->m_nodes[m_index].key;
+        }
+
+        Value &GetValue() const {
+            return m_map->m_nodes[m_index].value;
+        }
+
+        Iterator &operator++() {
+            m_index++;
+            while (m_index < m_map->m_size && !m_map->Valid(m_index)) {
+                m_index++;
+            }
+            return *this;
+        }
+
+        bool operator!=(const Iterator &other) {
+            return m_index != other.m_index;
+        }
+
+    private:
+        CoalescedHashMap *m_map;
+        int m_index;
+    };
+
+    Iterator Begin() {
+        return Iterator(this);
+    }
+
+    Iterator End() {
+        return Iterator(this, m_size);
+    }
+
 private:
     struct Node {
         Key key;

@@ -6,26 +6,32 @@ int test() {
     srand(time(NULL));
     int N = 100;
     CoalescedHashMap<std::string, int> map;
-    std::set<int> test_number;
+    std::map<int, int> test_number;
 
     for (int i = 0; i < N; i++) {
-        test_number.insert(rand() % 10000000);
+        auto key = rand() % 10000000;
+        auto it = test_number.find(key);
+        if (it != test_number.end()) {
+            i--;
+            continue;
+        }
+        test_number[key] = i;
     }
 
     for (auto &i: test_number) {
-        map.Insert(std::to_string(i), i);
+        map.Insert(std::to_string(i.first), i.second);
     }
 
     int value = 0;
     for (auto &i: test_number) {
-        if (map.Find(std::to_string(i), value)) {
-            std::cout << "key: " << i << " value: " << value << std::endl;
+        if (map.Find(std::to_string(i.first), value)) {
+            std::cout << "key: " << i.first << " value: " << value << std::endl;
         } else {
-            std::cout << "key: " << i << " not found" << std::endl;
+            std::cout << "key: " << i.first << " not found" << std::endl;
             return -1;
         }
-        if (value != i) {
-            std::cout << "key: " << i << " value: " << value << " not equal" << std::endl;
+        if (value != i.second) {
+            std::cout << "key: " << i.first << " value: " << value << " not equal" << std::endl;
             return -1;
         }
     }
@@ -40,9 +46,13 @@ int test() {
 
     //std::cout << map.Dump() << std::endl;
 
+    for (auto it = map.Begin(); it != map.End(); ++it) {
+        std::cout << "key: " << it.GetKey() << " value: " << it.GetValue() << std::endl;
+    }
+
     for (auto &i: test_number) {
-        if (!map.Erase(std::to_string(i))) {
-            std::cout << "erase key: " << i << " failed" << std::endl;
+        if (!map.Erase(std::to_string(i.first))) {
+            std::cout << "erase key: " << i.first << " failed" << std::endl;
             return -1;
         }
     }
