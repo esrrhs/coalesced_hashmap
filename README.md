@@ -1,5 +1,5 @@
 # coalesced_hashmap
-C++ Coalesced HashMap, inspired by [Coalesced_hashing](https://en.wikipedia.org/wiki/Coalesced_hashing).
+C++ [Coalesced_hashing](https://en.wikipedia.org/wiki/Coalesced_hashing), inspired by Lua table implementation.
 header only, no dependencies.
 
 ## Usage
