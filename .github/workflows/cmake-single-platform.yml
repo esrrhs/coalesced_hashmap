@@ -20,5 +20,4 @@ jobs:
         cd build
         cmake ..
         make
-        cd ..
-        ./test_bin
+        ./coalesced_hashmap_test
