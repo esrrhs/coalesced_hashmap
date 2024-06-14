@@ -482,7 +482,7 @@ public:
             return m_set_iter.GetKey().key;
         }
 
-        Value &GetValue() const {
+        const Value &GetValue() const {
             return m_set_iter.GetKey().value;
         }
 
