@@ -162,13 +162,14 @@ public:
         m_bitmap->Set(mp);
     }
 
-    bool Find(Key &key) {
-        auto mp = MainPosition(key);
+    template<typename OtherKey>
+    bool Find(OtherKey other_key, Key &key) {
+        auto mp = MainPosition(other_key);
         if (!Valid(mp)) {
             return false;
         }
         while (mp != -1) {
-            if (Equal()(m_nodes[mp].key, key)) {
+            if (Equal()(m_nodes[mp].key, other_key)) {
                 key = m_nodes[mp].key;
                 return true;
             }
@@ -191,14 +192,15 @@ public:
         return false;
     }
 
-    bool Erase(const Key &key) {
-        auto mp = MainPosition(key);
+    template<typename OtherKey>
+    bool Erase(const OtherKey &other_key) {
+        auto mp = MainPosition(other_key);
         if (!Valid(mp)) {
             return false;
         }
         auto cur = mp;
         while (cur != -1) {
-            if (Equal()(m_nodes[cur].key, key)) {
+            if (Equal()(m_nodes[cur].key, other_key)) {
                 auto clear_pos = cur;
 
                 // remove node from chain
@@ -334,8 +336,9 @@ private:
         }
     };
 
-    int MainPosition(const Key &key) const {
-        return Hash()(key) % m_size;
+    template<typename OtherKey>
+    int MainPosition(const OtherKey &other_key) const {
+        return Hash()(other_key) % m_size;
     }
 
     bool Valid(int index) const {
@@ -422,11 +425,19 @@ private:
         size_t operator()(const KeyValue &kv) const {
             return Hash()(kv.key);
         }
+
+        size_t operator()(const Key &k) const {
+            return Hash()(k);
+        }
     };
 
     struct KeyValueEqual {
         bool operator()(const KeyValue &lhs, const KeyValue &rhs) const {
             return Equal()(lhs.key, rhs.key);
+        }
+
+        bool operator()(const KeyValue &lhs, const Key &rhs) const {
+            return Equal()(lhs.key, rhs);
         }
     };
 
@@ -446,8 +457,7 @@ public:
 
     bool Find(const Key &key, Value &value) {
         KeyValue kv;
-        kv.key = key;
-        if (m_set.Find(kv)) {
+        if (m_set.Find(key, kv)) {
             value = kv.value;
             return true;
         }
@@ -455,7 +465,7 @@ public:
     }
 
     bool Erase(const Key &key) {
-        return m_set.Erase({key});
+        return m_set.Erase(key);
     }
 
     int Capacity() const {
