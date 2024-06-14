@@ -10,6 +10,7 @@ int test() {
     srand(time(NULL));
     int N = 1000000;
     CoalescedHashMap<std::string, int> map;
+    CoalescedHashSet<std::string> set;
 
     while (1) {
         std::map<int64_t, int> test_number;
@@ -23,6 +24,7 @@ int test() {
 
         for (auto &i: test_number) {
             map.Insert(std::to_string(i.first), i.second);
+            set.Insert(std::to_string(i.first));
         }
 
         std::cout << "size:" << map.Size() << std::endl;
@@ -39,6 +41,13 @@ int test() {
                 std::cout << "key: " << i.first << " value: " << value << " not equal" << std::endl;
                 return -1;
             }
+
+            if (set.Contains(std::to_string(i.first))) {
+//                std::cout << "key: " << i.first << std::endl;
+            } else {
+                std::cout << "key: " << i.first << " not found" << std::endl;
+                return -1;
+            }
         }
 
         std::cout << "size:" << map.Size() << std::endl;
@@ -49,14 +58,16 @@ int test() {
             std::cout << "chain length: " << item.first << " count: " << item.second << std::endl;
         }
 
-//        std::cout << map.Dump() << std::endl;
-
 //        for (auto it = map.Begin(); it != map.End(); ++it) {
 //            std::cout << "key: " << it.GetKey() << " value: " << it.GetValue() << std::endl;
 //        }
 
         for (auto &i: test_number) {
             if (!map.Erase(std::to_string(i.first))) {
+                std::cout << "erase key: " << i.first << " failed" << std::endl;
+                return -1;
+            }
+            if (!set.Erase(std::to_string(i.first))) {
                 std::cout << "erase key: " << i.first << " failed" << std::endl;
                 return -1;
             }
@@ -147,6 +158,6 @@ int benchmark_unordered_map() {
 }
 
 int main() {
-    benchmark();
+    test();
     return 0;
 }
