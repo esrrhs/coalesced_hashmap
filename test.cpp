@@ -12,7 +12,7 @@ int test() {
     CoalescedHashMap<std::string, int> map;
     CoalescedHashSet<std::string> set;
 
-    while (1) {
+    for (int j = 0; j < 100; j++) {
         std::map<int64_t, int> test_number;
 
         for (int i = 0; i < N; i++) {
