@@ -41,33 +41,12 @@
 #include <type_traits>
 
 namespace coalesced_hashmap {
-class BitMap {
-public:
-    BitMap(int bit_size) {
-        m_size = (bit_size + 7) / 8;
-        m_data = new char[m_size];
-        memset(m_data, 0, m_size);
-    }
 
-    ~BitMap() {
-        delete[] m_data;
+template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
+struct DefaultIsValid {
+    bool operator()(const Key& key) const {
+        return !Equal()(key, Key());
     }
-
-    void Set(int index) {
-        m_data[index / 8] |= (1 << (index % 8));
-    }
-
-    void Clear(int index) {
-        m_data[index / 8] &= ~(1 << (index % 8));
-    }
-
-    bool Test(int index) const {
-        return m_data[index / 8] & (1 << (index % 8));
-    }
-
-private:
-    char* m_data;
-    int m_size;
 };
 
 static const int primes[] = {
@@ -79,33 +58,23 @@ static const int primes[] = {
     1821371039
 };
 
-template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
+template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>, typename IsValid = DefaultIsValid<Key, Hash, Equal>>
 class CoalescedHashSet {
 public:
     CoalescedHashSet(int size = 1) {
         m_nodes = new Node[size];
         m_size = size;
         InitFreeList();
-        m_bitmap = new BitMap(size);
     }
 
     ~CoalescedHashSet() {
-        delete m_bitmap;
         delete[] m_nodes;
     }
 
-    /*
-    ** inserts a new key into a hash table; first, check whether key's main
-    ** position is free. If not, check whether colliding node is in its main
-    ** position or not: if it is not, move colliding node to an empty place and
-    ** put new key in its main position; otherwise (colliding node is in its main
-    ** position), new key goes to an empty position.
-    */
     void Insert(const Key& key) {
-        auto mp = MainPosition(key);
+        size_t h = Hash()(key);
+        auto mp = h % m_size;
         if (Valid(mp)) {
-            /* main position is taken? */
-            // try to find key first
             auto cur = mp;
             while (cur != -1) {
                 if (Equal()(m_nodes[cur].key, key)) {
@@ -115,35 +84,27 @@ public:
                 cur = m_nodes[cur].next;
             }
 
-            auto f = GetFreePosition(); /* get a free place */
+            auto f = GetFreePosition();
             if (f < 0) {
-                /* cannot find a free place? */
-                auto b = Rehash(); /* grow table */
-                if (b < 0) {
-                    return; /* grow failed */
-                }
-                return Insert(key); /* insert key into grown table */
+                Rehash();
+                return Insert(key);
             }
-            auto othern = MainPosition(m_nodes[mp].key); /* other node's main position */
+            
+            auto othern = Hash()(m_nodes[mp].key) % m_size;
             if (othern != mp) {
-                /* is colliding node out of its main position? */
-                /* yes; move colliding node into free position */
-                auto pre = m_nodes[mp].pre; /* find previous */
+                auto pre = m_nodes[mp].pre;
                 assert(pre != -1);
-                auto next = m_nodes[mp].next; /* find next */
-                m_nodes[pre].next = f; /* rechain to point to 'f' */
+                auto next = m_nodes[mp].next;
+                m_nodes[pre].next = f;
                 if (next != -1) {
                     m_nodes[next].pre = f;
                 }
-                m_nodes[f] = m_nodes[mp]; /* copy colliding node into free pos. */
-                m_bitmap->Set(f);
-                m_nodes[mp].Clear(); /* now 'mp' is free */
+                m_nodes[f] = m_nodes[mp];
+                m_nodes[mp].Clear();
             } else {
-                /* colliding node is in its own main position */
-                /* new node will go into free position */
                 auto next = m_nodes[mp].next;
                 if (next != -1) {
-                    m_nodes[f].next = next; /* chain new position */
+                    m_nodes[f].next = next;
                     m_nodes[next].pre = f;
                 }
                 m_nodes[mp].next = f;
@@ -151,30 +112,20 @@ public:
                 mp = f;
             }
         } else {
-            // remove from free list
             auto pre = m_nodes[mp].pre;
             auto next = m_nodes[mp].next;
-            if (pre != -1) {
-                m_nodes[pre].next = next;
-            }
-            if (next != -1) {
-                m_nodes[next].pre = pre;
-            }
-            if (m_free == mp) {
-                m_free = next;
-            }
+            if (pre != -1) m_nodes[pre].next = next;
+            if (next != -1) m_nodes[next].pre = pre;
+            if (m_free == mp) m_free = next;
             m_nodes[mp].Clear();
         }
         m_nodes[mp].key = key;
-        m_bitmap->Set(mp);
     }
 
     template<typename OtherKey>
     bool Find(OtherKey other_key, Key& key) {
-        auto mp = MainPosition(other_key);
-        if (!Valid(mp)) {
-            return false;
-        }
+        if (m_size == 0) return false;
+        auto mp = Hash()(other_key) % m_size;
         while (mp != -1) {
             if (Equal()(m_nodes[mp].key, other_key)) {
                 key = m_nodes[mp].key;
@@ -185,11 +136,23 @@ public:
         return false;
     }
 
-    bool Contains(const Key& key) {
-        auto mp = MainPosition(key);
-        if (!Valid(mp)) {
-            return false;
+    template<typename OtherKey, typename Func>
+    bool FindAndExecute(const OtherKey& other_key, Func func) {
+        if (m_size == 0) return false;
+        auto mp = Hash()(other_key) % m_size;
+        while (mp != -1) {
+            if (Equal()(m_nodes[mp].key, other_key)) {
+                func(m_nodes[mp].key);
+                return true;
+            }
+            mp = m_nodes[mp].next;
         }
+        return false;
+    }
+
+    bool Contains(const Key& key) {
+        if (m_size == 0) return false;
+        auto mp = Hash()(key) % m_size;
         while (mp != -1) {
             if (Equal()(m_nodes[mp].key, key)) {
                 return true;
@@ -201,16 +164,12 @@ public:
 
     template<typename OtherKey>
     bool Erase(const OtherKey& other_key) {
-        auto mp = MainPosition(other_key);
-        if (!Valid(mp)) {
-            return false;
-        }
+        if (m_size == 0) return false;
+        auto mp = Hash()(other_key) % m_size;
         auto cur = mp;
         while (cur != -1) {
             if (Equal()(m_nodes[cur].key, other_key)) {
                 auto clear_pos = cur;
-
-                // remove node from chain
                 auto pre = m_nodes[cur].pre;
                 auto next = m_nodes[cur].next;
                 if (pre != -1) {
@@ -218,7 +177,6 @@ public:
                 }
                 if (next != -1) {
                     m_nodes[next].pre = pre;
-                    // if is head, we should move next to main position
                     if (mp == cur) {
                         auto next_next = m_nodes[next].next;
                         m_nodes[cur] = m_nodes[next];
@@ -229,10 +187,6 @@ public:
                         clear_pos = next;
                     }
                 }
-
-                m_bitmap->Clear(clear_pos);
-
-                // add to free list
                 m_nodes[clear_pos].Clear();
                 m_nodes[clear_pos].next = m_free;
                 m_nodes[clear_pos].pre = -1;
@@ -264,8 +218,11 @@ public:
     int MainPositionSize() const {
         int ret = 0;
         for (int i = 0; i < m_size; i++) {
-            if (Valid(i) && MainPosition(m_nodes[i].key) == i) {
-                ret++;
+            if (Valid(i)) {
+                size_t h = Hash()(m_nodes[i].key);
+                if (h % m_size == (size_t)i) {
+                    ret++;
+                }
             }
         }
         return ret;
@@ -275,7 +232,6 @@ public:
         std::map<int, int> ret;
         for (int i = 0; i < m_size; i++) {
             if (Valid(i)) {
-                // check is head?
                 if (m_nodes[i].pre == -1) {
                     int count = 0;
                     int next = i;
@@ -344,13 +300,8 @@ private:
         }
     };
 
-    template<typename OtherKey>
-    int MainPosition(const OtherKey& other_key) const {
-        return Hash()(other_key) % m_size;
-    }
-
     bool Valid(int index) const {
-        return m_bitmap->Test(index);
+        return IsValid()(m_nodes[index].key);
     }
 
     int GetFreePosition() {
@@ -381,7 +332,7 @@ private:
                 right = mid - 1;
             }
         }
-        return (left < size) ? primes[left] : -1; // 如果n大于数组中的所有质数，返回-1
+        return (left < size) ? primes[left] : -1;
     }
 
     void InitFreeList() {
@@ -395,21 +346,18 @@ private:
     }
 
     int Rehash() {
-        auto size = FindNextCapacity(Capacity() + 1);
-        if (size == -1) {
-            return -1;
-        }
+        auto size = FindNextCapacity(Capacity() * 2 + 1);
+        if (size == -1) return -1;
         auto oldnodes = m_nodes;
         auto oldsize = m_size;
-        auto oldbitmap = m_bitmap;
         m_nodes = new Node[size];
         m_size = size;
         InitFreeList();
-        m_bitmap = new BitMap(size);
         for (int i = 0; i < oldsize; i++) {
-            Insert(oldnodes[i].key);
+            if (IsValid()(oldnodes[i].key)) {
+                Insert(oldnodes[i].key);
+            }
         }
-        delete oldbitmap;
         delete[] oldnodes;
         return 0;
     }
@@ -418,15 +366,16 @@ private:
     int m_free = 0; // free list head
     int m_size = 0;
     Node* m_nodes;
-    BitMap* m_bitmap;
 };
 
-template<typename Key, typename Value, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
+template<typename Key, typename Value, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>, typename IsValid = DefaultIsValid<Key, Hash, Equal>>
 class CoalescedHashMap {
 private:
     struct KeyValue {
         Key key;
         Value value;
+        KeyValue() : key(Key()), value(Value()) {}
+        KeyValue(const Key& k, const Value& v) : key(k), value(v) {}
     };
 
     struct KeyValueHash {
@@ -449,7 +398,13 @@ private:
         }
     };
 
-    typedef CoalescedHashSet<KeyValue, KeyValueHash, KeyValueEqual> CoalescedHashSetType;
+    struct KeyValueIsValid {
+        bool operator()(const KeyValue& kv) const {
+            return IsValid()(kv.key);
+        }
+    };
+
+    typedef CoalescedHashSet<KeyValue, KeyValueHash, KeyValueEqual, KeyValueIsValid> CoalescedHashSetType;
     CoalescedHashSetType m_set;
 
 public:
@@ -464,12 +419,9 @@ public:
     }
 
     bool Find(const Key& key, Value& value) {
-        KeyValue kv;
-        if (m_set.Find(key, kv)) {
+        return m_set.FindAndExecute(key, [&](const KeyValue& kv) {
             value = kv.value;
-            return true;
-        }
-        return false;
+        });
     }
 
     bool Erase(const Key& key) {

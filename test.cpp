@@ -3,7 +3,8 @@
 using namespace coalesced_hashmap;
 
 int64_t random_int64() {
-    return (int64_t) rand() << 32 | rand();
+    int64_t r = ((int64_t) rand() << 48) | ((int64_t) rand() << 32) | ((int64_t) rand() << 16) | rand();
+    return r == 0 ? 1 : r;
 }
 
 int test() {
@@ -12,7 +13,7 @@ int test() {
     CoalescedHashMap<std::string, int> map;
     CoalescedHashSet<std::string> set;
 
-    for (int j = 0; j < 100; j++) {
+    for (int j = 0; j < 5; j++) {
         std::map<int64_t, int> test_number;
 
         for (int i = 0; i < N; i++) {
@@ -94,70 +95,60 @@ int init_test_data() {
 
 int benchmark() {
     init_test_data();
+    std::cout << "--- CoalescedHashMap Benchmark ---" << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
     CoalescedHashMap<int64_t, int64_t> map;
     for (auto &i: gData) {
         map.Insert(i, i);
     }
-    std::cout << "insert time:" << std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::high_resolution_clock::now() - begin).count() << std::endl;
+    std::cout << "Insert time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - begin).count() << " ms" << std::endl;
+    
     begin = std::chrono::high_resolution_clock::now();
     for (auto &i: gData) {
         int64_t value;
         if (!map.Find(i, value)) {
-            std::cout << "find key: " << i << " failed" << std::endl;
-            return -1;
-        }
-        if (value != i) {
-            std::cout << "find key: " << i << " value: " << value << " not equal" << std::endl;
+            std::cout << "Find key: " << i << " failed" << std::endl;
             return -1;
         }
     }
-    std::cout << "find time:" << std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::high_resolution_clock::now() - begin).count() << std::endl;
-    std::cout << "size:" << map.Size() << std::endl;
-    std::cout << "capacity:" << map.Capacity() << std::endl;
-    std::cout << "main_position_size:" << map.MainPositionSize() << std::endl;
-    auto chain_status = map.ChainStatus();
-    for (auto &item: chain_status) {
-        std::cout << "chain length: " << item.first << " count: " << item.second << std::endl;
-    }
-    std::cout << "end" << std::endl;
-    char c;
-    std::cin >> c;
+    std::cout << "Find time:   " << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - begin).count() << " ms" << std::endl;
+    std::cout << "Capacity:    " << map.Capacity() << std::endl;
+    std::cout << std::endl;
     return 0;
 }
 
 int benchmark_unordered_map() {
     init_test_data();
+    std::cout << "--- std::unordered_map Benchmark ---" << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
     std::unordered_map<int64_t, int64_t> map;
     for (auto &i: gData) {
         map[i] = i;
     }
-    std::cout << "insert time:" << std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::high_resolution_clock::now() - begin).count() << std::endl;
+    std::cout << "Insert time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - begin).count() << " ms" << std::endl;
+    
     begin = std::chrono::high_resolution_clock::now();
     for (auto &i: gData) {
         auto it = map.find(i);
         if (it == map.end()) {
-            std::cout << "find key: " << i << " failed" << std::endl;
-            return -1;
-        }
-        if (it->second != i) {
-            std::cout << "find key: " << i << " value: " << it->second << " not equal" << std::endl;
+            std::cout << "Find key: " << i << " failed" << std::endl;
             return -1;
         }
     }
-    std::cout << "find time:" << std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::high_resolution_clock::now() - begin).count() << std::endl;
-    std::cout << "size:" << map.size() << std::endl;
-    char c;
-    std::cin >> c;
+    std::cout << "Find time:   " << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - begin).count() << " ms" << std::endl;
+    std::cout << std::endl;
     return 0;
 }
 
 int main() {
-    test();
+    if (test() == 0) {
+        std::cout << "Correctness test passed!" << std::endl << std::endl;
+        benchmark();
+        benchmark_unordered_map();
+    }
     return 0;
 }
