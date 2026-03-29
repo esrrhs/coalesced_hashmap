@@ -41,7 +41,6 @@
 #include <type_traits>
 
 namespace coalesced_hashmap {
-
 class BitMap {
 public:
     BitMap(int bit_size) {
@@ -67,16 +66,18 @@ public:
     }
 
 private:
-    char *m_data;
+    char* m_data;
     int m_size;
 };
 
-static const int primes[] = {2, 5, 7, 11, 17, 23, 37, 53, 79, 113, 167, 251, 373, 557, 839, 1259, 1889,
-                             2833, 4243, 6361, 9533, 14249, 21373, 32059, 48089, 72131, 108197, 162293,
-                             243439, 365159, 547739, 821609, 1232413, 1848619, 2772929, 4159393, 6239089,
-                             9358633, 14037949, 21056923, 31585387, 47378081, 71067121, 106600683,
-                             159901019, 239851529, 359777293, 539665939, 809498909, 1214247359,
-                             1821371039};
+static const int primes[] = {
+    2, 5, 7, 11, 17, 23, 37, 53, 79, 113, 167, 251, 373, 557, 839, 1259, 1889,
+    2833, 4243, 6361, 9533, 14249, 21373, 32059, 48089, 72131, 108197, 162293,
+    243439, 365159, 547739, 821609, 1232413, 1848619, 2772929, 4159393, 6239089,
+    9358633, 14037949, 21056923, 31585387, 47378081, 71067121, 106600683,
+    159901019, 239851529, 359777293, 539665939, 809498909, 1214247359,
+    1821371039
+};
 
 template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
 class CoalescedHashSet {
@@ -100,9 +101,10 @@ public:
     ** put new key in its main position; otherwise (colliding node is in its main
     ** position), new key goes to an empty position.
     */
-    void Insert(const Key &key) {
+    void Insert(const Key& key) {
         auto mp = MainPosition(key);
-        if (Valid(mp)) { /* main position is taken? */
+        if (Valid(mp)) {
+            /* main position is taken? */
             // try to find key first
             auto cur = mp;
             while (cur != -1) {
@@ -114,15 +116,17 @@ public:
             }
 
             auto f = GetFreePosition(); /* get a free place */
-            if (f < 0) { /* cannot find a free place? */
-                auto b = Rehash();  /* grow table */
+            if (f < 0) {
+                /* cannot find a free place? */
+                auto b = Rehash(); /* grow table */
                 if (b < 0) {
-                    return;  /* grow failed */
+                    return; /* grow failed */
                 }
-                return Insert(key);  /* insert key into grown table */
+                return Insert(key); /* insert key into grown table */
             }
             auto othern = MainPosition(m_nodes[mp].key); /* other node's main position */
-            if (othern != mp) {  /* is colliding node out of its main position? */
+            if (othern != mp) {
+                /* is colliding node out of its main position? */
                 /* yes; move colliding node into free position */
                 auto pre = m_nodes[mp].pre; /* find previous */
                 assert(pre != -1);
@@ -134,7 +138,8 @@ public:
                 m_nodes[f] = m_nodes[mp]; /* copy colliding node into free pos. */
                 m_bitmap->Set(f);
                 m_nodes[mp].Clear(); /* now 'mp' is free */
-            } else { /* colliding node is in its own main position */
+            } else {
+                /* colliding node is in its own main position */
                 /* new node will go into free position */
                 auto next = m_nodes[mp].next;
                 if (next != -1) {
@@ -165,7 +170,7 @@ public:
     }
 
     template<typename OtherKey>
-    bool Find(OtherKey other_key, Key &key) {
+    bool Find(OtherKey other_key, Key& key) {
         auto mp = MainPosition(other_key);
         if (!Valid(mp)) {
             return false;
@@ -180,7 +185,7 @@ public:
         return false;
     }
 
-    bool Contains(const Key &key) {
+    bool Contains(const Key& key) {
         auto mp = MainPosition(key);
         if (!Valid(mp)) {
             return false;
@@ -195,7 +200,7 @@ public:
     }
 
     template<typename OtherKey>
-    bool Erase(const OtherKey &other_key) {
+    bool Erase(const OtherKey& other_key) {
         auto mp = MainPosition(other_key);
         if (!Valid(mp)) {
             return false;
@@ -287,20 +292,21 @@ public:
 
     class Iterator {
     public:
-        Iterator(CoalescedHashSet *map) : m_map(map) {
+        Iterator(CoalescedHashSet* map) : m_map(map) {
             m_index = 0;
             while (m_index < m_map->m_size && !m_map->Valid(m_index)) {
                 m_index++;
             }
         }
 
-        Iterator(CoalescedHashSet *map, int index) : m_map(map), m_index(index) {}
+        Iterator(CoalescedHashSet* map, int index) : m_map(map), m_index(index) {
+        }
 
-        const Key &GetKey() const {
+        const Key& GetKey() const {
             return m_map->m_nodes[m_index].key;
         }
 
-        Iterator &operator++() {
+        Iterator& operator++() {
             m_index++;
             while (m_index < m_map->m_size && !m_map->Valid(m_index)) {
                 m_index++;
@@ -308,12 +314,12 @@ public:
             return *this;
         }
 
-        bool operator!=(const Iterator &other) {
+        bool operator!=(const Iterator& other) {
             return m_index != other.m_index;
         }
 
     private:
-        CoalescedHashSet *m_map;
+        CoalescedHashSet* m_map;
         int m_index;
     };
 
@@ -339,7 +345,7 @@ private:
     };
 
     template<typename OtherKey>
-    int MainPosition(const OtherKey &other_key) const {
+    int MainPosition(const OtherKey& other_key) const {
         return Hash()(other_key) % m_size;
     }
 
@@ -375,7 +381,7 @@ private:
                 right = mid - 1;
             }
         }
-        return (left < size) ? primes[left] : -1;  // 如果n大于数组中的所有质数，返回-1
+        return (left < size) ? primes[left] : -1; // 如果n大于数组中的所有质数，返回-1
     }
 
     void InitFreeList() {
@@ -411,8 +417,8 @@ private:
 private:
     int m_free = 0; // free list head
     int m_size = 0;
-    Node *m_nodes;
-    BitMap *m_bitmap;
+    Node* m_nodes;
+    BitMap* m_bitmap;
 };
 
 template<typename Key, typename Value, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
@@ -424,21 +430,21 @@ private:
     };
 
     struct KeyValueHash {
-        size_t operator()(const KeyValue &kv) const {
+        size_t operator()(const KeyValue& kv) const {
             return Hash()(kv.key);
         }
 
-        size_t operator()(const Key &k) const {
+        size_t operator()(const Key& k) const {
             return Hash()(k);
         }
     };
 
     struct KeyValueEqual {
-        bool operator()(const KeyValue &lhs, const KeyValue &rhs) const {
+        bool operator()(const KeyValue& lhs, const KeyValue& rhs) const {
             return Equal()(lhs.key, rhs.key);
         }
 
-        bool operator()(const KeyValue &lhs, const Key &rhs) const {
+        bool operator()(const KeyValue& lhs, const Key& rhs) const {
             return Equal()(lhs.key, rhs);
         }
     };
@@ -453,11 +459,11 @@ public:
     ~CoalescedHashMap() {
     }
 
-    void Insert(const Key &key, const Value &value) {
+    void Insert(const Key& key, const Value& value) {
         m_set.Insert({key, value});
     }
 
-    bool Find(const Key &key, Value &value) {
+    bool Find(const Key& key, Value& value) {
         KeyValue kv;
         if (m_set.Find(key, kv)) {
             value = kv.value;
@@ -466,7 +472,7 @@ public:
         return false;
     }
 
-    bool Erase(const Key &key) {
+    bool Erase(const Key& key) {
         return m_set.Erase(key);
     }
 
@@ -488,22 +494,23 @@ public:
 
     class Iterator {
     public:
-        Iterator(typename CoalescedHashSetType::Iterator it) : m_set_iter(it) {}
+        Iterator(typename CoalescedHashSetType::Iterator it) : m_set_iter(it) {
+        }
 
-        const Key &GetKey() const {
+        const Key& GetKey() const {
             return m_set_iter.GetKey().key;
         }
 
-        const Value &GetValue() const {
+        const Value& GetValue() const {
             return m_set_iter.GetKey().value;
         }
 
-        Iterator &operator++() {
+        Iterator& operator++() {
             ++m_set_iter;
             return *this;
         }
 
-        bool operator!=(const Iterator &other) {
+        bool operator!=(const Iterator& other) {
             return m_set_iter != other.m_set_iter;
         }
 
@@ -518,7 +525,5 @@ public:
     Iterator End() {
         return Iterator(m_set.End());
     }
-
 };
-
 }

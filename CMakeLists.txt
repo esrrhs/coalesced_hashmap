@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 project(coalesced_hashmap_test)
 
 set(CMAKE_CXX_STANDARD 11)
