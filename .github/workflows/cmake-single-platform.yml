@@ -11,14 +11,22 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: build
       run: |
         mkdir build
         cd build
         cmake ..
         make
-        ./coalesced_hashmap_test
+
+    - name: deterministic correctness tests
+      run: timeout 2m ./coalesced_hashmap_test --correctness-only
+      working-directory: build
+
+    - name: full test suite
+      run: timeout 15m ./coalesced_hashmap_test
+      working-directory: build

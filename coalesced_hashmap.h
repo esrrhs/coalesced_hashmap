@@ -289,7 +289,7 @@ public:
 
 private:
     struct Node {
-        Key key;
+        Key key = Key();
         int pre = -1;
         int next = -1;
 
@@ -337,11 +337,13 @@ private:
 
     void InitFreeList() {
         for (int i = 0; i < m_size - 1; i++) {
+            m_nodes[i].key = Key();
             m_nodes[i + 1].pre = i;
             m_nodes[i].next = i + 1;
         }
         m_nodes[0].pre = -1;
         m_nodes[m_size - 1].next = -1;
+        m_nodes[m_size - 1].key = Key();
         m_free = 0;
     }
 

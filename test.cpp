@@ -251,6 +251,11 @@ bool test_min_capacity_and_first_rehash() {
 
     TEST_CHECK(map.Capacity() == 1);
     TEST_CHECK(set.Capacity() == 1);
+    // Free slots must not look occupied: an uninitialized Node::key of a
+    // primitive Key type used to make Size() nonzero and, at capacity 1,
+    // Insert of a second key walked a self-cycle in next.
+    TEST_CHECK(map.Size() == 0);
+    TEST_CHECK(set.Size() == 0);
 
     map.Insert(7, 70);
     set.Insert(7);
@@ -850,6 +855,7 @@ bool test_string_collision_style_ops() {
 }
 
 int run_test(const char* name, bool (*fn)()) {
+    std::cout << "[RUN]  " << name << std::endl;
     if (fn()) {
         std::cout << "[PASS] " << name << std::endl;
         g_passed++;
@@ -884,12 +890,22 @@ int correctness_tests() {
     return g_failed == 0 ? 0 : -1;
 }
 
-int main() {
+int main(int argc, char** argv) {
+    bool correctness_only = false;
+    for (int i = 1; i < argc; i++) {
+        if (std::string(argv[i]) == "--correctness-only") {
+            correctness_only = true;
+        }
+    }
+
     if (correctness_tests() != 0) {
         std::cout << "Deterministic correctness tests failed!" << std::endl;
         return 1;
     }
     std::cout << "Deterministic correctness tests passed!" << std::endl << std::endl;
+    if (correctness_only) {
+        return 0;
+    }
 
     if (test() != 0) {
         std::cout << "Random correctness test failed!" << std::endl;
